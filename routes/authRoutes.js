@@ -1,14 +1,11 @@
 const express = require("express");
-
 const bcrypt = require("bcryptjs");
-
 const jwt = require("jsonwebtoken");
-
 const User = require("../models/User.js");
 
 const router = express.Router();
 
-//Register Route
+// Register Route
 router.post("/register", async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
@@ -20,12 +17,18 @@ router.post("/register", async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const newUser = new User({ name, email, password: hashedPassword, role });
+    const newUser = new User({
+      name,
+      email,
+      password: hashedPassword,
+      role: role || "user", // default to "user" if not provided
+    });
 
     await newUser.save();
 
     res.status(201).json({ message: "User registered successfully" });
   } catch (error) {
+    console.error("Register Error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -37,7 +40,8 @@ router.post("/login", async (req, res) => {
 
     const user = await User.findOne({ email });
 
-    if (!User) return res.status(400).json({ message: "Invalid Credentials" });
+    // 🔧 FIXED: was using wrong variable name
+    if (!user) return res.status(400).json({ message: "Invalid Credentials" });
 
     const isMatch = await bcrypt.compare(password, user.password);
 
@@ -50,8 +54,15 @@ router.post("/login", async (req, res) => {
       { expiresIn: "1d" }
     );
 
-    res.status(200).json({ token, role: user.role, name: user.name });
+    // ✅ return everything the frontend needs
+    res.status(200).json({
+      message: "Login successful",
+      token,
+      role: user.role,
+      name: user.name,
+    });
   } catch (error) {
+    console.error("Login Error:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
